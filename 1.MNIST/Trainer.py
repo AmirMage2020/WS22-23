@@ -14,10 +14,15 @@ class trainer:
         self.max_epochs = max_epochs
         self.losses_train = []
         self.losses_val = []
+        self.device = "cpu"
         
 
     def fit(self):
 
+        if torch.cuda.is_available():
+            self.device = "cuda:0"
+        
+        self.model.to(self.device)
         for epoch in range(self.max_epochs):
 
             
@@ -25,6 +30,8 @@ class trainer:
             for i, batch in enumerate(self.train_loader, 0):
 
                 x, y = batch
+                x = x.to(self.device)
+                y = y.to(self.device)
                 self.optimizer.zero_grad()
                 y_pred = self.model(x)
                 loss = self.loss_fn(y_pred, y)
@@ -49,12 +56,14 @@ class trainer:
         for i, batch in enumerate(data_loader, 0):
             
             x, y = batch
+            x = x.to(self.device)
+            y = y.to(self.device)
             with torch.no_grad():
                 y_pred = self.model(x)
                 loss = self.loss_fn(y_pred, y)
-            losses.append(loss.item())
+            losses.append(loss.cpu().numpy())
         
-        data_loss = torch.tensor(losses).mean().item()
+        data_loss = losses.mean()
         self.model.train()
 
         return data_loss
