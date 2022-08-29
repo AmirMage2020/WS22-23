@@ -61,9 +61,9 @@ class trainer:
             with torch.no_grad():
                 y_pred = self.model(x)
                 loss = self.loss_fn(y_pred, y)
-            losses.append(loss.cpu().numpy())
+            losses.append(loss.cpu())
         
-        data_loss = losses.mean()
+        data_loss = torch.tensor(losses).mean().item()
         self.model.train()
 
         return data_loss
