@@ -130,4 +130,4 @@ dmypy.json
 
 #Data
 1.MNIST/checkpoints
-
+1.MNIST/logs
