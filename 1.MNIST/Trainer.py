@@ -4,7 +4,7 @@ import matplotlib.pyplot as pl
 import os
 from torch.utils.tensorboard import SummaryWriter
 class trainer:
-    def __init__(self, model, optimizer, loss_fn, train_loader, val_loader, max_epochs, model_name, state_dict_name = 'check_point_', summary_path='logs/', when_to_stop = 5, save_model = True, early_stopping = True, refresh_rate = 100) -> None:
+    def __init__(self, model, optimizer, loss_fn, train_loader, val_loader, max_epochs, model_name, summary_path='logs/', when_to_stop = 5, save_model = True, early_stopping = True, refresh_rate = 100) -> None:
         self.model = model
         self.optimizer = optimizer
         self.loss_fn = loss_fn
@@ -14,7 +14,6 @@ class trainer:
         self.losses_train = []
         self.losses_val = []
         self.device = "cpu"
-        self.state_dict_name = state_dict_name
         self.best_val = 1e10
         self.best_train = 1e10
         self.best_optimizer_state = self.optimizer.state_dict()
@@ -59,7 +58,7 @@ class trainer:
 
             self.losses_train.append(train_loss)
             self.losses_val.append(val_loss)
-            print(f'epoch : {epoch}, train_loss : {train_loss:.4f} ,  val_loss : {val_loss:.4f}')
+            print(f'epoch : {epoch+1}, train_loss : {train_loss:.4f} ,  val_loss : {val_loss:.4f}')
 
             overfit = self.__overfitting(epoch, val_loss, train_loss)
 
@@ -118,7 +117,7 @@ class trainer:
         
         new_path = ''
         for i in range(1000):
-            new_path = self.path + self.state_dict_name + str(i) + '.pth'
+            new_path = self.path + 'checkpoint_'+ str(i) + '.pth'
             if not os.path.exists(new_path):
                 torch.save(checkpoint, new_path)
                 break
