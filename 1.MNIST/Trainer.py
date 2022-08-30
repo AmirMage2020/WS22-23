@@ -16,6 +16,7 @@ class trainer:
         self.device = "cpu"
         self.state_dict_name = state_dict_name
         self.best_val = 1e10
+        self.best_train = 1e10
         self.best_optimizer_state = self.optimizer.state_dict()
         self.best_model_state = self.model.state_dict()
         self.stop = 0
@@ -49,11 +50,13 @@ class trainer:
             self.losses_val.append(val_loss)
             print(train_loss, " , ", val_loss)
 
-            overfit = self.__early_stopping(epoch, val_loss, train_loss)
+            overfit = self.__overfitting(epoch, val_loss, train_loss)
 
             if(overfit and self.__early_stopping) :
                 print(f'Early Stopping! Overfitting\nBest Validation Loss : {self.best_val}, Current_Loss : {val_loss}')
-                break
+                return
+            if(epoch == self.max_epochs - 1):
+                self.__save_checkpoint(epoch, train_loss, val_loss, self.model.state_dict(), self.optimizer.state_dict())
 
     def evaluation(self, data_loader):
 
@@ -89,7 +92,7 @@ class trainer:
     
 
 
-    def __save_checkpoint(self, epoch, train_loss, val_loss, path, model_state_dict, optimizer_state_dict):
+    def __save_checkpoint(self, epoch, train_loss, val_loss, model_state_dict, optimizer_state_dict):
         checkpoint = {
             'epoch' : epoch,
             'model_state' : model_state_dict,
@@ -97,24 +100,28 @@ class trainer:
             'train_loss' : train_loss,
             'val_loss' : val_loss
         }
-        checkpointPath = path 
-        if not os.path.exist(checkpointPath):
+        
+        if not os.path.exists('checkpoints/'):
+            os.mkdir('checkpoints/')
+        checkpointPath = 'checkpoints/' + self.path
+        if not os.path.exists(checkpointPath):
             os.mkdir(checkpointPath)
         new_path = ''
         for i in range(1000):
             new_path = checkpointPath + self.state_dict_name + str(i) + '.pth'
-            if not os.exist(new_path):
+            if not os.path.exists(new_path):
                 torch.save(checkpoint, new_path)
                 break
         print('*************************************************************')
-        print(f'[Checkpoint: epoch: {epoch}, val_loss: {val_loss:.2f} \nsaved on {new_path}]')
+        print(f'[Checkpoint: epoch: {epoch+1}, val_loss: {val_loss:.2f} \nsaved on {new_path}]')
         print('*************************************************************')
 
 
-    def __early_stopping(self, epoch, val_loss, train_loss):
+    def __overfitting(self, epoch, val_loss, train_loss):
         overfit = False
         if val_loss < self.best_val:
             self.best_val = val_loss
+            self.best_train = train_loss
             self.best_model_state = self.model.state_dict()
             self.best_optimizer_state = self.optimizer.state_dict()
             self.stop = 0
@@ -124,11 +131,14 @@ class trainer:
             overfit = True
             print("Overfitting!")
             if self.save_model:
-                self.__save_checkpoint(epoch + 1, train_loss, val_loss, self.path, self.best_model_state, self.best_optimizer_state)
+                self.__save_checkpoint(epoch - self.stop, self.best_train, self.best_val, self.best_model_state, self.best_optimizer_state)
             if not self.__early_stopping:
                 print('Restarting Overfitting Check')
                 print('Best Validation: ', self.best_val)
+                self.best_train = train_loss
                 self.best_val = val_loss
+                self.best_model_state = self.model.state_dict()
+                self.best_optimizer_state = self.optimizer.state_dict()
                 self.stop = 0
 
         return overfit
