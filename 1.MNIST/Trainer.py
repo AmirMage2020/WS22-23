@@ -1,21 +1,27 @@
 from cProfile import label
 import torch
 import matplotlib.pyplot as pl
-
+import os
 
 class trainer:
-    def __init__(self, model, optimizer, loss_fn, train_loader, val_loader, test_loader, max_epochs) -> None:
+    def __init__(self, model, optimizer, loss_fn, train_loader, val_loader, max_epochs, path , state_dict_name = 'check_point_',  when_to_stop = 5, save_model = True) -> None:
         self.model = model
         self.optimizer = optimizer
         self.loss_fn = loss_fn
         self.val_loader = val_loader
         self.train_loader = train_loader
-        self.test_loader = test_loader
         self.max_epochs = max_epochs
         self.losses_train = []
         self.losses_val = []
         self.device = "cpu"
-        
+        self.state_dict_name = state_dict_name
+        self.best_val = 1e10
+        self.best_optimizer_state = self.optimizer.state_dict()
+        self.best_model_state = self.model.state_dict()
+        self.stop = 0
+        self.when_to_stop = when_to_stop
+        self.save_model = save_model
+        self.path = path
 
     def fit(self):
 
@@ -24,8 +30,6 @@ class trainer:
         
         self.model.to(self.device)
         for epoch in range(self.max_epochs):
-
-            
 
             for i, batch in enumerate(self.train_loader, 0):
 
@@ -38,17 +42,20 @@ class trainer:
                 loss.backward()
                 self.optimizer.step()
 
-            train_loss = self._evaluation(self.train_loader)
-            val_loss = self._evaluation(self.val_loader)
+            train_loss = self.evaluation(self.train_loader)
+            val_loss = self.evaluation(self.val_loader)
 
             self.losses_train.append(train_loss)
             self.losses_val.append(val_loss)
             print(train_loss, " , ", val_loss)
 
-        
-    def _early_stopping(self, epoch, best_val, best_model_state, best_optimizer_state, val_loss, train_loss, stop):
-        pass
-    def _evaluation(self, data_loader):
+            overfit = self.__early_stopping(epoch, val_loss, train_loss)
+
+            if(overfit and self.__early_stopping) :
+                print(f'Early Stopping! Overfitting\nBest Validation Loss : {self.best_val}, Current_Loss : {val_loss}')
+                break
+
+    def evaluation(self, data_loader):
 
         self.model.eval()
         losses = []
@@ -79,3 +86,50 @@ class trainer:
         pl.ylabel('loss')
         pl.title("Train/Val Loss")
         pl.legend()
+    
+
+
+    def __save_checkpoint(self, epoch, train_loss, val_loss, path, model_state_dict, optimizer_state_dict):
+        checkpoint = {
+            'epoch' : epoch,
+            'model_state' : model_state_dict,
+            'optimizer_state' : optimizer_state_dict,
+            'train_loss' : train_loss,
+            'val_loss' : val_loss
+        }
+        checkpointPath = path 
+        if not os.path.exist(checkpointPath):
+            os.mkdir(checkpointPath)
+        new_path = ''
+        for i in range(1000):
+            new_path = checkpointPath + self.state_dict_name + str(i) + '.pth'
+            if not os.exist(new_path):
+                torch.save(checkpoint, new_path)
+                break
+        print('*************************************************************')
+        print(f'[Checkpoint: epoch: {epoch}, val_loss: {val_loss:.2f} \nsaved on {new_path}]')
+        print('*************************************************************')
+
+
+    def __early_stopping(self, epoch, val_loss, train_loss):
+        overfit = False
+        if val_loss < self.best_val:
+            self.best_val = val_loss
+            self.best_model_state = self.model.state_dict()
+            self.best_optimizer_state = self.optimizer.state_dict()
+            self.stop = 0
+        else:
+            self.stop += 1
+        if self.stop >= self.when_to_stop:
+            overfit = True
+            print("Overfitting!")
+            if self.save_model:
+                self.__save_checkpoint(epoch + 1, train_loss, val_loss, self.path, self.best_model_state, self.best_optimizer_state)
+            if not self.__early_stopping:
+                print('Restarting Overfitting Check')
+                print('Best Validation: ', self.best_val)
+                self.best_val = val_loss
+                self.stop = 0
+
+        return overfit
+    
