@@ -133,3 +133,8 @@ dmypy.json
 1.MNIST/logs
 3.Breast-Cancer-Prediction/checkpoints
 3.Breast-Cancer-Prediction/logs
+4.MNIST-GAN/data
+4.MNIST-GAN/logs
+4.MNIST-GAN/checkpoints
+4.MNIST-GAN/saved-models
+
