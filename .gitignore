@@ -137,4 +137,5 @@ dmypy.json
 4.MNIST-GAN/logs
 4.MNIST-GAN/checkpoints
 4.MNIST-GAN/saved-models
+2.Semantic-Segmentation/data
 
